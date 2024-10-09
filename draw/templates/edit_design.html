@@ -1,15 +1,120 @@
-<!-- edit_design.html -->
-<form method="post">
-    {% csrf_token %}
-    <canvas id="canvas"></canvas>
-    <input type="hidden" name="data" id="data">
-    <button type="submit">Save</button>
-</form>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
-<script>
-    var canvas = new fabric.Canvas('canvas');
-    canvas.loadFromJSON('{{ design.data|escapejs }}');
-    document.querySelector('form').onsubmit = function() {
-        document.getElementById('data').value = JSON.stringify(canvas);
-    };
-</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Design</title>
+    <style>
+        #canvas {
+            border: 1px solid black;
+            cursor: crosshair;
+        }
+        .toolbar {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Edit Your Design</h1>
+    <div class="toolbar">
+        <label for="colorPicker">Choose Color:</label>
+        <input type="color" id="colorPicker" value="#000000">
+        
+        <label for="strokeWidth">Stroke Width:</label>
+        <input type="number" id="strokeWidth" value="5" min="1" max="50">
+        
+        <label for="eraserSize">Eraser Size:</label>
+        <input type="number" id="eraserSize" value="10" min="1" max="50">
+
+        <button id="eraseButton">Erase</button>
+        <button id="drawButton">Draw</button>
+        <button id="clearCanvas">Clear Canvas</button>
+    </div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <br>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="data" id="drawingData">
+        <button type="submit" onclick="saveDrawing()">Save Changes</button>
+    </form>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+        let erase = false;
+        const colorPicker = document.getElementById('colorPicker');
+        const strokeWidth = document.getElementById('strokeWidth');
+        const eraserSize = document.getElementById('eraserSize');
+        
+        // Set initial color and stroke width
+        ctx.strokeStyle = colorPicker.value;
+        ctx.lineWidth = strokeWidth.value;
+        
+        // Load existing drawing data
+        const existingData = "{{ design.data|safe }}";
+        if (existingData) {
+            const image = new Image();
+            image.onload = function() {
+                ctx.drawImage(image, 0, 0);
+            };
+            image.src = existingData;
+        }
+        
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        colorPicker.addEventListener('change', () => {
+            ctx.strokeStyle = colorPicker.value;
+        });
+
+        strokeWidth.addEventListener('change', () => {
+            if (!erase) ctx.lineWidth = strokeWidth.value;
+        });
+
+        eraserSize.addEventListener('change', () => {
+            if (erase) ctx.lineWidth = eraserSize.value;
+        });
+
+        document.getElementById('eraseButton').addEventListener('click', () => {
+            erase = true;
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.lineWidth = eraserSize.value;  // Set eraser size separately
+        });
+
+        document.getElementById('drawButton').addEventListener('click', () => {
+            erase = false;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.lineWidth = strokeWidth.value;  // Set drawing size separately
+        });
+
+        document.getElementById('clearCanvas').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        function startDrawing(e) {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            drawing = false;
+            ctx.closePath();
+        }
+
+        function saveDrawing() {
+            const dataURL = canvas.toDataURL();
+            document.getElementById('drawingData').value = dataURL;
+        }
+    </script>
+</body>
+</html>
