@@ -1,0 +1,15 @@
+<!-- edit_design.html -->
+<form method="post">
+    {% csrf_token %}
+    <canvas id="canvas"></canvas>
+    <input type="hidden" name="data" id="data">
+    <button type="submit">Save</button>
+</form>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
+<script>
+    var canvas = new fabric.Canvas('canvas');
+    canvas.loadFromJSON('{{ design.data|escapejs }}');
+    document.querySelector('form').onsubmit = function() {
+        document.getElementById('data').value = JSON.stringify(canvas);
+    };
+</script>
